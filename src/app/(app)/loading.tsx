@@ -1,0 +1,17 @@
+import { PageContainer } from "@/components/page";
+import { Skeleton } from "@/components/ui/misc";
+
+export default function Loading() {
+  return (
+    <PageContainer aria-busy="true" aria-label="Carregando">
+      <Skeleton className="h-7 w-56" />
+      <Skeleton className="mt-2 h-4 w-80 max-w-full" />
+      <div className="mt-6 grid gap-3 sm:grid-cols-3">
+        <Skeleton className="h-24" />
+        <Skeleton className="h-24" />
+        <Skeleton className="h-24" />
+      </div>
+      <Skeleton className="mt-4 h-72" />
+    </PageContainer>
+  );
+}

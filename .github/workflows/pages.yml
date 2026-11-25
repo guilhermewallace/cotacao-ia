@@ -1,0 +1,50 @@
+name: Página pública (GitHub Pages)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "src/modules/landing/**"
+      - "public/landing/**"
+      - "src/app/icon.svg"
+      - "scripts/build-pages.ts"
+      - ".github/workflows/pages.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      # --ignore-scripts: a página não precisa do cliente Prisma (postinstall).
+      - run: npm ci --ignore-scripts
+      - run: npm run pages:build
+        env:
+          LANDING_WHATSAPP_NUMBER: ${{ vars.LANDING_WHATSAPP_NUMBER }}
+          LANDING_WHATSAPP_MESSAGE: ${{ vars.LANDING_WHATSAPP_MESSAGE }}
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist/pages
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

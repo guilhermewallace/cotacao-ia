@@ -1,0 +1,713 @@
+// Cotação IA — modelo de dados
+//
+// Convenções:
+// - Toda entidade pertencente a uma empresa possui `organization_id`.
+// - Relações entre entidades da mesma empresa usam chave estrangeira COMPOSTA
+//   (organization_id, <id>) → o banco rejeita referências entre organizações.
+// - Relações opcionais compostas usam `onDelete: NoAction` (verificada ao fim do
+//   comando), o que permite excluir uma organização inteira em cascata.
+// - Índices GIN de busca textual (FTS) e alguns índices parciais são criados em SQL
+//   na migration, pois o Prisma não os representa no schema.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ───────────────────────────── Enums ─────────────────────────────
+
+enum MembershipRole {
+  OWNER
+  ADMIN
+  SELLER
+  VIEWER
+}
+
+enum ProductAliasType {
+  SYNONYM
+  MANUFACTURER_CODE
+}
+
+enum IntegrationType {
+  WHATSAPP_CLOUD
+  EMAIL_INBOUND
+}
+
+enum IntegrationStatus {
+  INACTIVE
+  ACTIVE
+  ERROR
+}
+
+enum Channel {
+  UPLOAD
+  EMAIL
+  WHATSAPP
+}
+
+enum InboundMessageStatus {
+  RECEIVED
+  PROCESSING
+  PROCESSED
+  FAILED
+}
+
+enum AttachmentKind {
+  PDF
+  SPREADSHEET
+  IMAGE
+  AUDIO
+  TEXT
+  OTHER
+}
+
+enum AttachmentStatus {
+  PENDING_DOWNLOAD
+  STORED
+  FAILED
+  REJECTED
+  PURGED
+}
+
+enum QuotationRequestStatus {
+  RECEIVED
+  PROCESSING
+  AWAITING_REVIEW
+  QUOTED
+  FAILED
+  DISCARDED
+}
+
+enum Legibility {
+  GOOD
+  PARTIAL
+  POOR
+}
+
+enum MatchOutcome {
+  SUGGESTED
+  AMBIGUOUS
+  NO_MATCH
+}
+
+enum RequestedItemStatus {
+  PENDING
+  CONFIRMED
+  NOT_FOUND
+}
+
+enum PriceSource {
+  PRICE_LIST
+  CATALOG
+  MANUAL
+}
+
+enum QuotationStatus {
+  DRAFT
+  FINALIZED
+  CANCELED
+}
+
+enum ProcessingJobType {
+  PROCESS_INBOUND_MESSAGE
+  CATALOG_IMPORT
+  PRICE_LIST_IMPORT
+  RETENTION_PURGE
+}
+
+enum ProcessingJobStatus {
+  QUEUED
+  RUNNING
+  SUCCEEDED
+  FAILED
+}
+
+enum AuditActorType {
+  USER
+  SYSTEM
+  WEBHOOK
+}
+
+// ─────────────────────── Identidade e tenancy ───────────────────────
+
+model Organization {
+  id                           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name                         String
+  slug                         String   @unique
+  legalName                    String?  @map("legal_name")
+  taxId                        String?  @map("tax_id")
+  /// Identificador exclusivo de recebimento de e-mails (parte local do endereço).
+  inboundEmailKey              String   @unique @map("inbound_email_key")
+  quotationSequence            Int      @default(0) @map("quotation_sequence")
+  defaultQuotationValidityDays Int      @default(15) @map("default_quotation_validity_days")
+  /// Dias de retenção de documentos recebidos. Nulo = sem expurgo automático.
+  documentRetentionDays        Int?     @map("document_retention_days")
+  isDemo                       Boolean  @default(false) @map("is_demo")
+  createdAt                    DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt                    DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  memberships       Membership[]
+  customers         Customer[]
+  products          Product[]
+  productAliases    ProductAlias[]
+  priceLists        PriceList[]
+  priceListItems    PriceListItem[]
+  integrations      Integration[]
+  inboundMessages   InboundMessage[]
+  attachments       Attachment[]
+  quotationRequests QuotationRequest[]
+  requestedItems    RequestedItem[]
+  productMatches    ProductMatch[]
+  quotations        Quotation[]
+  quotationItems    QuotationItem[]
+  processingJobs    ProcessingJob[]
+  auditLogs         AuditLog[]
+  channelEvents     ChannelEvent[]
+
+  @@map("organizations")
+}
+
+model User {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  /// Sempre armazenado em minúsculas.
+  email          String    @unique
+  name           String
+  /// ID do usuário no provedor de autenticação (Supabase Auth).
+  authProviderId String?   @unique @map("auth_provider_id")
+  isActive       Boolean   @default(true) @map("is_active")
+  lastLoginAt    DateTime? @map("last_login_at") @db.Timestamptz(3)
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  memberships      Membership[]
+  uploadedMessages InboundMessage[]
+  reviewedRequests QuotationRequest[]
+  reviewedItems    RequestedItem[]
+  createdQuotes    Quotation[]        @relation("QuotationCreatedBy")
+  finalizedQuotes  Quotation[]        @relation("QuotationFinalizedBy")
+  auditLogs        AuditLog[]
+
+  @@map("users")
+}
+
+model Membership {
+  id             String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId String         @map("organization_id") @db.Uuid
+  userId         String         @map("user_id") @db.Uuid
+  role           MembershipRole @default(SELLER)
+  createdAt      DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime       @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, userId])
+  @@index([userId])
+  @@map("memberships")
+}
+
+// ───────────────────────────── Clientes ─────────────────────────────
+
+model Customer {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  name           String
+  legalName      String?  @map("legal_name")
+  taxId          String?  @map("tax_id")
+  email          String?
+  /// Apenas dígitos, com DDI (ex.: 5511900000001).
+  phone          String?
+  contactName    String?  @map("contact_name")
+  notes          String?
+  priceListId    String?  @map("price_list_id") @db.Uuid
+  isActive       Boolean  @default(true) @map("is_active")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  organization      Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  priceList         PriceList?         @relation(fields: [organizationId, priceListId], references: [organizationId, id], onDelete: NoAction)
+  inboundMessages   InboundMessage[]
+  quotationRequests QuotationRequest[]
+  quotations        Quotation[]
+
+  @@unique([organizationId, id])
+  @@unique([organizationId, taxId])
+  @@index([organizationId, name])
+  @@index([organizationId, email])
+  @@index([organizationId, phone])
+  @@map("customers")
+}
+
+// ───────────────────────────── Catálogo ─────────────────────────────
+
+model Product {
+  id                         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId             String   @map("organization_id") @db.Uuid
+  sku                        String
+  /// SKU em maiúsculas, sem espaços e separadores — chave de unicidade e de busca exata.
+  skuNormalized              String   @map("sku_normalized")
+  description                String
+  descriptionNormalized      String   @map("description_normalized")
+  manufacturer               String?
+  manufacturerCode           String?  @map("manufacturer_code")
+  manufacturerCodeNormalized String?  @map("manufacturer_code_normalized")
+  category                   String?
+  unit                       String   @default("UN")
+  /// Atributos técnicos normalizados (tensão, corrente, polos, bitola...).
+  attributes                 Json     @default("{}")
+  /// Preço base de catálogo. Listas de preços têm precedência.
+  price                      Decimal? @db.Decimal(14, 4)
+  isActive                   Boolean  @default(true) @map("is_active")
+  /// Texto normalizado para FTS: descrição + fabricante + códigos + sinônimos.
+  searchText                 String   @default("") @map("search_text")
+  createdAt                  DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt                  DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  aliases        ProductAlias[]
+  priceListItems PriceListItem[]
+  matches        ProductMatch[]
+  requestedItems RequestedItem[]
+  quotationItems QuotationItem[]
+
+  @@unique([organizationId, id])
+  @@unique([organizationId, skuNormalized])
+  @@index([organizationId, manufacturerCodeNormalized])
+  @@index([organizationId, category])
+  @@index([organizationId, isActive])
+  @@index([descriptionNormalized(ops: raw("gin_trgm_ops"))], map: "products_description_normalized_trgm_idx", type: Gin)
+  @@map("products")
+}
+
+model ProductAlias {
+  id              String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId  String           @map("organization_id") @db.Uuid
+  productId       String           @map("product_id") @db.Uuid
+  type            ProductAliasType
+  value           String
+  valueNormalized String           @map("value_normalized")
+  /// Fabricante ao qual o código pertence (apenas para MANUFACTURER_CODE).
+  manufacturer    String?
+  createdAt       DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  product      Product      @relation(fields: [organizationId, productId], references: [organizationId, id], onDelete: Cascade)
+
+  @@unique([organizationId, productId, type, valueNormalized], map: "product_aliases_org_product_type_value_key")
+  @@index([organizationId, type, valueNormalized])
+  @@index([valueNormalized(ops: raw("gin_trgm_ops"))], map: "product_aliases_value_normalized_trgm_idx", type: Gin)
+  @@map("product_aliases")
+}
+
+model PriceList {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId String    @map("organization_id") @db.Uuid
+  name           String
+  currency       String    @default("BRL")
+  /// No máximo uma lista padrão por organização (índice parcial na migration).
+  isDefault      Boolean   @default(false) @map("is_default")
+  isActive       Boolean   @default(true) @map("is_active")
+  validFrom      DateTime? @map("valid_from") @db.Date
+  validUntil     DateTime? @map("valid_until") @db.Date
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  organization Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  items        PriceListItem[]
+  customers    Customer[]
+  quotations   Quotation[]
+
+  @@unique([organizationId, id])
+  @@unique([organizationId, name])
+  @@map("price_lists")
+}
+
+model PriceListItem {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  priceListId    String   @map("price_list_id") @db.Uuid
+  productId      String   @map("product_id") @db.Uuid
+  unitPrice      Decimal  @map("unit_price") @db.Decimal(14, 4)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  priceList    PriceList    @relation(fields: [organizationId, priceListId], references: [organizationId, id], onDelete: Cascade)
+  product      Product      @relation(fields: [organizationId, productId], references: [organizationId, id], onDelete: Cascade)
+
+  @@unique([priceListId, productId])
+  @@index([organizationId, productId])
+  @@map("price_list_items")
+}
+
+// ───────────────────── Integrações e caixa de entrada ─────────────────────
+
+model Integration {
+  id                   String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId       String            @map("organization_id") @db.Uuid
+  type                 IntegrationType
+  status               IntegrationStatus @default(INACTIVE)
+  displayName          String?           @map("display_name")
+  /// Identificador da conta no serviço externo (ex.: phone_number_id do WhatsApp).
+  /// Usado para rotear webhooks até a organização.
+  externalAccountId    String?           @map("external_account_id")
+  /// Configuração não sensível.
+  config               Json              @default("{}")
+  /// Credenciais cifradas com AES-256-GCM. Nunca em texto puro.
+  credentialsEncrypted String?           @map("credentials_encrypted")
+  lastEventAt          DateTime?         @map("last_event_at") @db.Timestamptz(3)
+  lastError            String?           @map("last_error")
+  createdAt            DateTime          @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt            DateTime          @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  organization    Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  inboundMessages InboundMessage[]
+  channelEvents   ChannelEvent[]
+
+  @@unique([organizationId, id])
+  @@unique([organizationId, type])
+  @@unique([type, externalAccountId])
+  @@map("integrations")
+}
+
+model InboundMessage {
+  id             String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId String               @map("organization_id") @db.Uuid
+  channel        Channel
+  /// Identificador da mensagem no canal de origem — base da idempotência.
+  externalId     String               @map("external_id")
+  integrationId  String?              @map("integration_id") @db.Uuid
+  customerId     String?              @map("customer_id") @db.Uuid
+  uploadedById   String?              @map("uploaded_by_id") @db.Uuid
+  senderName     String?              @map("sender_name")
+  /// E-mail ou telefone do remetente.
+  senderAddress  String?              @map("sender_address")
+  subject        String?
+  textContent    String?              @map("text_content")
+  metadata       Json                 @default("{}")
+  status         InboundMessageStatus @default(RECEIVED)
+  error          String?
+  receivedAt     DateTime             @map("received_at") @db.Timestamptz(3)
+  createdAt      DateTime             @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime             @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  organization     Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  integration      Integration?      @relation(fields: [organizationId, integrationId], references: [organizationId, id], onDelete: NoAction)
+  customer         Customer?         @relation(fields: [organizationId, customerId], references: [organizationId, id], onDelete: NoAction)
+  uploadedBy       User?             @relation(fields: [uploadedById], references: [id], onDelete: SetNull)
+  attachments      Attachment[]
+  quotationRequest QuotationRequest?
+  processingJobs   ProcessingJob[]
+
+  @@unique([organizationId, id])
+  @@unique([organizationId, channel, externalId])
+  @@index([organizationId, receivedAt(sort: Desc)])
+  @@index([organizationId, status])
+  @@map("inbound_messages")
+}
+
+model Attachment {
+  id               String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId   String           @map("organization_id") @db.Uuid
+  inboundMessageId String           @map("inbound_message_id") @db.Uuid
+  fileName         String           @map("file_name")
+  contentType      String           @map("content_type")
+  sizeBytes        Int?             @map("size_bytes")
+  /// Chave no object storage privado. Nula enquanto o download estiver pendente.
+  storageKey       String?          @map("storage_key")
+  sha256           String?
+  kind             AttachmentKind
+  status           AttachmentStatus @default(STORED)
+  /// ID da mídia no canal de origem (ex.: media id do WhatsApp).
+  externalMediaId  String?          @map("external_media_id")
+  extractedText    String?          @map("extracted_text")
+  error            String?
+  purgedAt         DateTime?        @map("purged_at") @db.Timestamptz(3)
+  createdAt        DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt        DateTime         @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  inboundMessage InboundMessage  @relation(fields: [organizationId, inboundMessageId], references: [organizationId, id], onDelete: Cascade)
+  requestedItems RequestedItem[]
+
+  @@unique([organizationId, id])
+  @@index([organizationId, inboundMessageId])
+  @@index([organizationId, createdAt])
+  @@map("attachments")
+}
+
+/// Eventos de canal que não são mensagens (ex.: status de entrega do WhatsApp).
+model ChannelEvent {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId String    @map("organization_id") @db.Uuid
+  integrationId  String?   @map("integration_id") @db.Uuid
+  channel        Channel
+  eventType      String    @map("event_type")
+  externalId     String    @map("external_id")
+  payload        Json      @default("{}")
+  occurredAt     DateTime? @map("occurred_at") @db.Timestamptz(3)
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  integration  Integration? @relation(fields: [organizationId, integrationId], references: [organizationId, id], onDelete: NoAction)
+
+  @@unique([organizationId, channel, externalId])
+  @@index([organizationId, createdAt(sort: Desc)])
+  @@map("channel_events")
+}
+
+// ─────────────────────── Solicitações de cotação ───────────────────────
+
+model QuotationRequest {
+  id                  String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId      String                 @map("organization_id") @db.Uuid
+  inboundMessageId    String                 @map("inbound_message_id") @db.Uuid
+  customerId          String?                @map("customer_id") @db.Uuid
+  status              QuotationRequestStatus @default(RECEIVED)
+  title               String?
+  /// Dados do cliente identificados no documento (nunca inventados).
+  customerHint        Json?                  @map("customer_hint")
+  extractionProvider  String?                @map("extraction_provider")
+  extractionModel     String?                @map("extraction_model")
+  legibility          Legibility?
+  warnings            Json                   @default("[]")
+  itemsCount          Int                    @default(0) @map("items_count")
+  /// Itens com sugestão compatível encontrada no catálogo.
+  identifiedCount     Int                    @default(0) @map("identified_count")
+  receivedAt          DateTime               @map("received_at") @db.Timestamptz(3)
+  processingStartedAt DateTime?              @map("processing_started_at") @db.Timestamptz(3)
+  processedAt         DateTime?              @map("processed_at") @db.Timestamptz(3)
+  reviewedAt          DateTime?              @map("reviewed_at") @db.Timestamptz(3)
+  reviewedById        String?                @map("reviewed_by_id") @db.Uuid
+  createdAt           DateTime               @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt           DateTime               @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  inboundMessage InboundMessage  @relation(fields: [organizationId, inboundMessageId], references: [organizationId, id], onDelete: Cascade)
+  customer       Customer?       @relation(fields: [organizationId, customerId], references: [organizationId, id], onDelete: NoAction)
+  reviewedBy     User?           @relation(fields: [reviewedById], references: [id], onDelete: SetNull)
+  items          RequestedItem[]
+  quotations     Quotation[]
+
+  @@unique([organizationId, id])
+  @@unique([organizationId, inboundMessageId])
+  @@index([organizationId, status, receivedAt(sort: Desc)])
+  @@index([organizationId, customerId])
+  @@map("quotation_requests")
+}
+
+model RequestedItem {
+  id                    String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId        String              @map("organization_id") @db.Uuid
+  quotationRequestId    String              @map("quotation_request_id") @db.Uuid
+  lineNumber            Int                 @map("line_number")
+  originalDescription   String              @map("original_description")
+  normalizedDescription String              @map("normalized_description")
+  /// Quantidade vigente (pode ter sido corrigida na revisão).
+  quantity              Decimal?            @db.Decimal(14, 3)
+  /// Quantidade como extraída do documento — imutável.
+  extractedQuantity     Decimal?            @map("extracted_quantity") @db.Decimal(14, 3)
+  unit                  String?
+  manufacturer          String?
+  manufacturerCode      String?             @map("manufacturer_code")
+  attributes            Json                @default("{}")
+  sourceAttachmentId    String?             @map("source_attachment_id") @db.Uuid
+  /// Referência ao documento original (página, linha, planilha, trecho).
+  sourceReference       Json?               @map("source_reference")
+  confidence            Float?
+  notes                 String?
+  isManual              Boolean             @default(false) @map("is_manual")
+  matchOutcome          MatchOutcome        @default(NO_MATCH) @map("match_outcome")
+  status                RequestedItemStatus @default(PENDING)
+  selectedProductId     String?             @map("selected_product_id") @db.Uuid
+  unitPrice             Decimal?            @map("unit_price") @db.Decimal(14, 4)
+  priceSource           PriceSource?        @map("price_source")
+  reviewedById          String?             @map("reviewed_by_id") @db.Uuid
+  reviewedAt            DateTime?           @map("reviewed_at") @db.Timestamptz(3)
+  createdAt             DateTime            @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt             DateTime            @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  organization     Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  request          QuotationRequest @relation(fields: [organizationId, quotationRequestId], references: [organizationId, id], onDelete: Cascade)
+  sourceAttachment Attachment?      @relation(fields: [organizationId, sourceAttachmentId], references: [organizationId, id], onDelete: NoAction)
+  selectedProduct  Product?         @relation(fields: [organizationId, selectedProductId], references: [organizationId, id], onDelete: NoAction)
+  reviewedBy       User?            @relation(fields: [reviewedById], references: [id], onDelete: SetNull)
+  matches          ProductMatch[]
+  quotationItems   QuotationItem[]
+
+  @@unique([organizationId, id])
+  @@index([organizationId, quotationRequestId, lineNumber], map: "requested_items_org_request_line_idx")
+  @@index([organizationId, selectedProductId])
+  @@map("requested_items")
+}
+
+model ProductMatch {
+  id                String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId    String   @map("organization_id") @db.Uuid
+  requestedItemId   String   @map("requested_item_id") @db.Uuid
+  productId         String   @map("product_id") @db.Uuid
+  rank              Int
+  score             Float
+  /// Falso quando há atributo técnico crítico divergente.
+  compatible        Boolean
+  /// Estratégias que encontraram o candidato (SKU_EXACT, FTS, TRIGRAM...).
+  strategies        String[]
+  /// Pontuações por sinal.
+  signals           Json     @default("{}")
+  /// Justificativas legíveis.
+  reasons           Json     @default("[]")
+  /// Divergências de atributos técnicos.
+  incompatibilities Json     @default("[]")
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  organization  Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  requestedItem RequestedItem @relation(fields: [organizationId, requestedItemId], references: [organizationId, id], onDelete: Cascade)
+  product       Product       @relation(fields: [organizationId, productId], references: [organizationId, id], onDelete: Cascade)
+
+  @@unique([requestedItemId, productId])
+  @@index([organizationId, requestedItemId, rank])
+  @@index([organizationId, productId])
+  @@map("product_matches")
+}
+
+// ───────────────────────────── Cotações ─────────────────────────────
+
+model Quotation {
+  id                 String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId     String          @map("organization_id") @db.Uuid
+  sequence           Int
+  number             String
+  quotationRequestId String?         @map("quotation_request_id") @db.Uuid
+  customerId         String?         @map("customer_id") @db.Uuid
+  priceListId        String?         @map("price_list_id") @db.Uuid
+  status             QuotationStatus @default(DRAFT)
+  /// Identificação do cliente congelada na cotação.
+  customerName       String          @map("customer_name")
+  customerTaxId      String?         @map("customer_tax_id")
+  customerEmail      String?         @map("customer_email")
+  customerPhone      String?         @map("customer_phone")
+  customerContact    String?         @map("customer_contact")
+  issueDate          DateTime        @map("issue_date") @db.Date
+  validUntil         DateTime        @map("valid_until") @db.Date
+  notes              String?
+  paymentTerms       String?         @map("payment_terms")
+  deliveryTerms      String?         @map("delivery_terms")
+  discountPercent    Decimal         @default(0) @map("discount_percent") @db.Decimal(5, 2)
+  subtotal           Decimal         @default(0) @db.Decimal(14, 2)
+  discountTotal      Decimal         @default(0) @map("discount_total") @db.Decimal(14, 2)
+  total              Decimal         @default(0) @db.Decimal(14, 2)
+  currency           String          @default("BRL")
+  createdById        String?         @map("created_by_id") @db.Uuid
+  finalizedById      String?         @map("finalized_by_id") @db.Uuid
+  finalizedAt        DateTime?       @map("finalized_at") @db.Timestamptz(3)
+  createdAt          DateTime        @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt          DateTime        @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  organization Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  request      QuotationRequest? @relation(fields: [organizationId, quotationRequestId], references: [organizationId, id], onDelete: NoAction)
+  customer     Customer?         @relation(fields: [organizationId, customerId], references: [organizationId, id], onDelete: NoAction)
+  priceList    PriceList?        @relation(fields: [organizationId, priceListId], references: [organizationId, id], onDelete: NoAction)
+  createdBy    User?             @relation("QuotationCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  finalizedBy  User?             @relation("QuotationFinalizedBy", fields: [finalizedById], references: [id], onDelete: SetNull)
+  items        QuotationItem[]
+
+  @@unique([organizationId, id])
+  @@unique([organizationId, number])
+  @@unique([organizationId, sequence])
+  @@index([organizationId, status, createdAt(sort: Desc)])
+  @@index([organizationId, customerId])
+  @@index([organizationId, quotationRequestId])
+  @@map("quotations")
+}
+
+model QuotationItem {
+  id              String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId  String       @map("organization_id") @db.Uuid
+  quotationId     String       @map("quotation_id") @db.Uuid
+  lineNumber      Int          @map("line_number")
+  requestedItemId String?      @map("requested_item_id") @db.Uuid
+  productId       String?      @map("product_id") @db.Uuid
+  sku             String?
+  description     String
+  unit            String?
+  quantity        Decimal      @db.Decimal(14, 3)
+  unitPrice       Decimal?     @map("unit_price") @db.Decimal(14, 4)
+  discountPercent Decimal      @default(0) @map("discount_percent") @db.Decimal(5, 2)
+  lineTotal       Decimal      @default(0) @map("line_total") @db.Decimal(14, 2)
+  priceSource     PriceSource? @map("price_source")
+  /// Falso para itens solicitados que não puderam ser atendidos.
+  available       Boolean      @default(true)
+  notes           String?
+  createdAt       DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime     @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  organization  Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  quotation     Quotation      @relation(fields: [organizationId, quotationId], references: [organizationId, id], onDelete: Cascade)
+  product       Product?       @relation(fields: [organizationId, productId], references: [organizationId, id], onDelete: NoAction)
+  requestedItem RequestedItem? @relation(fields: [organizationId, requestedItemId], references: [organizationId, id], onDelete: NoAction)
+
+  @@index([organizationId, quotationId, lineNumber])
+  @@index([organizationId, productId])
+  @@index([organizationId, requestedItemId])
+  @@map("quotation_items")
+}
+
+// ─────────────────────── Processamento e auditoria ───────────────────────
+
+model ProcessingJob {
+  id               String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId   String              @map("organization_id") @db.Uuid
+  type             ProcessingJobType
+  status           ProcessingJobStatus @default(QUEUED)
+  /// Garante que o mesmo trabalho não seja criado duas vezes.
+  idempotencyKey   String              @map("idempotency_key")
+  inboundMessageId String?             @map("inbound_message_id") @db.Uuid
+  attempts         Int                 @default(0)
+  maxAttempts      Int                 @default(5) @map("max_attempts")
+  lastError        String?             @map("last_error")
+  payload          Json                @default("{}")
+  result           Json?
+  queuedAt         DateTime            @default(now()) @map("queued_at") @db.Timestamptz(3)
+  startedAt        DateTime?           @map("started_at") @db.Timestamptz(3)
+  /// Atualizado periodicamente pelo worker; base da recuperação de jobs interrompidos.
+  heartbeatAt      DateTime?           @map("heartbeat_at") @db.Timestamptz(3)
+  finishedAt       DateTime?           @map("finished_at") @db.Timestamptz(3)
+  createdAt        DateTime            @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt        DateTime            @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  inboundMessage InboundMessage? @relation(fields: [organizationId, inboundMessageId], references: [organizationId, id], onDelete: Cascade)
+
+  @@unique([organizationId, idempotencyKey])
+  @@index([status, heartbeatAt])
+  @@index([organizationId, inboundMessageId])
+  @@index([organizationId, type, createdAt(sort: Desc)])
+  @@map("processing_jobs")
+}
+
+model AuditLog {
+  id             String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId String         @map("organization_id") @db.Uuid
+  actorType      AuditActorType @map("actor_type")
+  actorUserId    String?        @map("actor_user_id") @db.Uuid
+  /// Ex.: "product.update", "quotation.finalize", "integration.credentials_update".
+  action         String
+  entityType     String         @map("entity_type")
+  entityId       String?        @map("entity_id")
+  /// Resumo da operação. Nunca contém segredos nem o conteúdo de documentos.
+  metadata       Json           @default("{}")
+  ipAddress      String?        @map("ip_address")
+  userAgent      String?        @map("user_agent")
+  createdAt      DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  actor        User?        @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, createdAt(sort: Desc)])
+  @@index([organizationId, entityType, entityId])
+  @@map("audit_logs")
+}

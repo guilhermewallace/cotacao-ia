@@ -1,0 +1,133 @@
+# Infraestrutura local do Cotação IA.
+#
+#   docker compose up -d                  → PostgreSQL, Redis e storage S3 (use com `npm run dev` + `npm run worker`)
+#   docker compose --profile app up -d    → idem + aplicação web e worker em contêineres
+#
+# As credenciais abaixo são exclusivas do ambiente local e coincidem com o `.env.example`.
+# NÃO as reutilize em produção. Como são conhecidas, as portas de PostgreSQL, Redis e storage
+# ficam publicadas apenas em 127.0.0.1: funcionam na sua máquina, mas não são alcançáveis pela rede.
+
+name: cotacao-ia
+
+services:
+  postgres:
+    # PostgreSQL 16 com pg_trgm e unaccent (contrib) e pgvector já disponível para a busca semântica futura.
+    image: pgvector/pgvector:pg16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: cotacao
+      POSTGRES_PASSWORD: cotacao
+      POSTGRES_DB: cotacao
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./docker/postgres/01-init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cotacao -d cotacao"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    # AOF ligado: os jobs enfileirados sobrevivem a um reinício do Redis.
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "127.0.0.1:6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  storage:
+    # Object storage compatível com S3 para desenvolvimento: RustFS (Apache-2.0), versão fixada.
+    # (As imagens minio/minio e minio/mc foram retiradas do Docker Hub; por isso não são usadas aqui.)
+    #
+    # O bucket é criado pela própria aplicação na primeira gravação (S3_AUTO_CREATE_BUCKET=true no
+    # `.env`) e nasce privado: os arquivos só saem por URL temporária assinada.
+    # Console web: http://localhost:9001/rustfs/console/ (chaves abaixo).
+    image: rustfs/rustfs:1.0.6
+    restart: unless-stopped
+    environment:
+      RUSTFS_VOLUMES: /data
+      RUSTFS_ADDRESS: "0.0.0.0:9000"
+      RUSTFS_CONSOLE_ENABLE: "true"
+      RUSTFS_CONSOLE_ADDRESS: "0.0.0.0:9001"
+      # Mesmos valores de S3_ACCESS_KEY_ID e S3_SECRET_ACCESS_KEY no `.env.example`.
+      RUSTFS_ACCESS_KEY: cotacaodev
+      RUSTFS_SECRET_KEY: cotacaodevsecret
+    ports:
+      - "127.0.0.1:9000:9000" # API S3
+      - "127.0.0.1:9001:9001" # console web
+    volumes:
+      - storage-data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:9000/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
+
+  # ── Aplicação em contêineres (opcional): docker compose --profile app up -d ──────────────
+  migrate:
+    profiles: ["app"]
+    build: .
+    command: ["npm", "run", "db:migrate"]
+    env_file: .env
+    environment: &app-env
+      DATABASE_URL: postgresql://cotacao:cotacao@postgres:5432/cotacao
+      REDIS_URL: redis://redis:6379
+      S3_ENDPOINT: http://storage:9000
+      # Endereço do storage como o NAVEGADOR o enxerga (usado nas URLs temporárias).
+      S3_PUBLIC_ENDPOINT: http://localhost:9000
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  web:
+    profiles: ["app"]
+    build: .
+    restart: unless-stopped
+    command: ["npm", "run", "start"]
+    env_file: .env
+    environment:
+      <<: *app-env
+    ports:
+      - "3000:3000"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+      # A aplicação só fala com o storage ao gravar ou ler um arquivo: basta o contêiner ter iniciado.
+      storage:
+        condition: service_started
+
+  worker:
+    profiles: ["app"]
+    build: .
+    restart: unless-stopped
+    command: ["node", "dist/worker.mjs"]
+    env_file: .env
+    environment:
+      <<: *app-env
+    # O worker não expõe HTTP: a verificação de saúde da imagem (rota /api/health) não se aplica.
+    healthcheck:
+      disable: true
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+      storage:
+        condition: service_started
+
+volumes:
+  postgres-data:
+  redis-data:
+  storage-data:

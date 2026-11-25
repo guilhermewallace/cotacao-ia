@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cotação IA — do pedido do cliente à cotação</title>
+<meta name="description" content="O Cotação IA lê o pedido que o cliente mandou — WhatsApp, e-mail, PDF, planilha ou foto —, encontra cada item no seu catálogo e monta a cotação. Seu time só confere.">
+<meta name="theme-color" content="#f3f4f7">
+<meta property="og:type" content="website">
+<meta property="og:locale" content="pt_BR">
+<meta property="og:title" content="Cotação IA — do pedido do cliente à cotação">
+<meta property="og:description" content="O Cotação IA lê o pedido que o cliente mandou — WhatsApp, e-mail, PDF, planilha ou foto —, encontra cada item no seu catálogo e monta a cotação. Seu time só confere.">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<link rel="preload" href="/landing/fonts/sofia-sans-extra-condensed.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/landing/fonts/geist.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/landing/fonts/reenie-beanie.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/landing/site.css">
+<script src="/landing/engine.js" defer></script>
+<script src="/landing/site.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#conteudo">Pular para o conteúdo</a>
+
+<header class="nav" id="nav">
+  <div class="wrap nav-in">
+    <a class="brand" href="#topo" aria-label="Cotação IA, início">
+      <svg viewBox="0 0 32 32" width="28" height="28" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#1f5fd0"/><path d="M9 10.5h10M9 16h14M9 21.5h7" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/><circle cx="23" cy="21.5" r="2.2" fill="#9cc2ff"/></svg>
+      Cotação IA
+    </a>
+    <nav class="nav-links" aria-label="Seções">
+      <a href="#leitura">Leitura</a>
+      <a href="#como-funciona">Como funciona</a>
+      <a href="#compatibilidade">Compatibilidade</a>
+      <a href="#revisao">Revisão</a>
+      <a href="#seguranca">Segurança</a>
+      <a href="#perguntas">Perguntas</a>
+    </nav>
+<!--@login-->
+    <a class="nav-login" href="{{LOGIN_URL}}">Entrar</a>
+<!--@/login-->
+<!--@wa-->
+    <a class="btn btn-primary btn-sm" href="{{WHATSAPP_URL}}" target="_blank" rel="noopener noreferrer"><span><span class="cta-long">Falar no </span>WhatsApp</span></a>
+<!--@/wa-->
+<!--@demo-->
+    <a class="btn btn-primary btn-sm" href="#leitura">Testar agora</a>
+<!--@/demo-->
+  </div>
+</header>
+
+<main id="conteudo">
+
+<!-- ═════════ Hero ═════════ -->
+<section class="hero" id="topo">
+  <div class="wrap">
+    <p class="eyebrow">Para distribuidoras de materiais elétricos e de automação</p>
+    <div class="hero-top">
+      <h1 class="hero-title">
+        <span>Chegou a <span class="hand">lista</span>.</span>
+        <span>Saiu a <mark>cotação</mark>.</span>
+      </h1>
+      <div class="hero-side">
+        <p class="lede">O Cotação IA lê o pedido do jeito que o cliente mandou — WhatsApp, e-mail, PDF, planilha ou foto de caderno —, encontra cada item no seu catálogo e monta a cotação. Seu vendedor confere e envia.</p>
+        <div class="hero-cta">
+<!--@wa-->
+          <a class="btn btn-primary" href="{{WHATSAPP_URL}}" target="_blank" rel="noopener noreferrer">Falar no WhatsApp
+            <svg class="go" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4"/></svg>
+          </a>
+<!--@/wa-->
+<!--@demo-->
+          <a class="btn btn-primary" href="#leitura">Testar com um item seu
+            <svg class="go" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4"/></svg>
+          </a>
+<!--@/demo-->
+          <a class="link" href="#como-funciona">Ver como funciona
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3v10M4 9l4 4 4-4"/></svg>
+          </a>
+        </div>
+      </div>
+    </div>
+    <ul class="hero-facts">
+      <li><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7"/></svg>Preço só do seu catálogo, nunca inventado</li>
+      <li><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7"/></svg>Nenhuma cotação sai sem revisão humana</li>
+      <li><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7"/></svg>WhatsApp pela API oficial da Meta</li>
+    </ul>
+
+    <div class="stage" id="stage">
+      <span class="crop tl"></span><span class="crop tr"></span><span class="crop bl"></span><span class="crop br"></span>
+      <div class="stage-bar">
+        <div class="tabs" role="tablist" aria-label="Como o pedido chegou">
+          <button class="tab" type="button" role="tab" id="tab-foto" aria-controls="panel-foto" aria-selected="true" data-tab="foto">
+            <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="1.5" y="4" width="13" height="9.5" rx="2"/><circle cx="8" cy="8.8" r="2.4"/><path d="M5.5 4l1-1.6h3l1 1.6"/></svg>
+            Foto de caderno
+          </button>
+          <button class="tab" type="button" role="tab" id="tab-chat" aria-controls="panel-chat" aria-selected="false" data-tab="chat" tabindex="-1">
+            <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 3.5h12v8H7l-3.2 2.3V11.5H2z"/></svg>
+            WhatsApp
+          </button>
+          <button class="tab" type="button" role="tab" id="tab-pdf" aria-controls="panel-pdf" aria-selected="false" data-tab="pdf" tabindex="-1">
+            <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 1.8h5.5L12.5 5v9.2H4z"/><path d="M9.3 1.8V5h3.2M6 8h4.5M6 10.6h4.5"/></svg>
+            PDF
+          </button>
+        </div>
+        <span class="stage-note">Demonstração · dados fictícios</span>
+        <button class="icon-btn" id="replay" type="button" aria-label="Repetir a leitura">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 8a5 5 0 1 1-1.6-3.7"/><path d="M13 2.5v2.8h-2.8"/></svg>
+        </button>
+      </div>
+
+      <div class="stage-body">
+        <div class="src" id="src">
+          <span class="beam" id="beam"></span>
+
+          <div class="src-view" id="panel-foto" role="tabpanel" aria-labelledby="tab-foto" data-view="foto">
+            <div class="note">
+              <p><span>obra jd. das flores - bloco B</span></p>
+              <ol>
+                <li><span class="src-line" data-text="12 disj tripolar 32A curva C">12 disj tripolar 32A curva C</span></li>
+                <li><span class="src-line" data-text="500m cabo flex 2,5 azul">500m cabo flex 2,5 azul</span></li>
+                <li><span class="src-line" data-text="30 lamp led 9w">30 lamp led 9w</span></li>
+                <li><span class="src-line" data-text="2 disj. bipolar 4_A" data-flag="ilegivel">2 disj. bipolar 4<span class="blot" role="img" aria-label="borrão"></span>A</span></li>
+                <li><span class="src-line" data-text="4 refletor led 50w">4 refletor led 50w</span></li>
+              </ol>
+            </div>
+          </div>
+
+          <div class="src-view" id="panel-chat" role="tabpanel" aria-labelledby="tab-chat" data-view="chat" hidden>
+            <div class="chat">
+              <div class="chat-head"><span class="avatar" aria-hidden="true">M</span><span><b>Marina · Compras</b>Construtora Horizonte Azul (fictícia)</span></div>
+              <div class="bubble">
+                <p>Bom dia! Preciso de preço pra hoje:</p>
+                <ol>
+                  <li><span class="src-line" data-text="12 disjuntor tripolar 32A curva C (ref ZTK-M3C32)">12 disjuntor tripolar 32A curva C (ref ZTK-M3C32)</span></li>
+                  <li><span class="src-line" data-text="80 tomada 2P+T 10A branca">80 tomada 2P+T 10A branca</span></li>
+                  <li><span class="src-line" data-text="6 contator 18A bobina 220V">6 contator 18A bobina 220V</span></li>
+                  <li><span class="src-line" data-text="150m cabo PP 3x2,5">150m cabo PP 3x2,5</span></li>
+                  <li><span class="src-line" data-text="2 válvula solenoide 1/2 24Vcc">2 válvula solenoide 1/2 24Vcc</span></li>
+                </ol>
+                <p>Consegue me mandar ainda de manhã?</p>
+                <time>09:12</time>
+              </div>
+            </div>
+          </div>
+
+          <div class="src-view" id="panel-pdf" role="tabpanel" aria-labelledby="tab-pdf" data-view="pdf" hidden>
+            <div class="doc">
+              <p class="doc-co">Construtora Horizonte Azul</p>
+              <p class="doc-tag">Documento fictício para demonstração</p>
+              <p class="doc-title">PEDIDO DE COTAÇÃO Nº 0457</p>
+              <p>Obra: Residencial Jardim das Flores · Torre B</p>
+              <table>
+                <thead><tr><th scope="col">#</th><th scope="col">Descrição</th><th scope="col">Un.</th><th scope="col">Qtd.</th></tr></thead>
+                <tbody>
+                  <tr class="src-line" data-text="Disjuntor DIN tripolar 32A curva C (ref. ZTK-M3C32)" data-qty="12" data-unit="un"><td>1</td><td>Disjuntor DIN tripolar 32A curva C (ref. ZTK-M3C32)</td><td>un</td><td>12</td></tr>
+                  <tr class="src-line" data-text="Disjuntor DIN monopolar 16A curva C" data-qty="40" data-unit="un"><td>2</td><td>Disjuntor DIN monopolar 16A curva C</td><td>un</td><td>40</td></tr>
+                  <tr class="src-line" data-text="IDR bipolar 40A 30mA" data-qty="6" data-unit="un"><td>3</td><td>IDR bipolar 40A 30mA</td><td>un</td><td>6</td></tr>
+                  <tr class="src-line" data-text="Cabo flexível 2,5mm² 750V azul" data-qty="500" data-unit="m"><td>4</td><td>Cabo flexível 2,5mm² 750V azul</td><td>m</td><td>500</td></tr>
+                  <tr class="src-line" data-text="Eletroduto PVC rígido roscável 3/4&quot; barra 3m" data-qty="60" data-unit="br"><td>5</td><td>Eletroduto PVC rígido roscável 3/4" barra 3m</td><td>br</td><td>60</td></tr>
+                  <tr class="src-line" data-text="Tomada 2P+T 10A 250V branca" data-qty="80" data-unit="un"><td>6</td><td>Tomada 2P+T 10A 250V branca</td><td>un</td><td>80</td></tr>
+                </tbody>
+              </table>
+              <p class="doc-foot">Favor informar prazo de entrega e condições de pagamento.</p>
+            </div>
+          </div>
+        </div>
+
+        <svg class="leader" id="leader" aria-hidden="true"></svg>
+
+        <div class="out" aria-live="off">
+          <div class="out-head">
+            <h2>Itens lidos e produto sugerido</h2>
+            <span class="label" id="out-source">foto de caderno</span>
+          </div>
+          <ol class="rows" id="rows"></ol>
+          <noscript><p class="read-note">A demonstração interativa precisa de JavaScript.</p></noscript>
+          <div class="out-foot"><span id="out-sum"></span><span>Subtotal das sugestões <b id="out-total"></b></span></div>
+        </div>
+      </div>
+    </div>
+    <p class="stage-caption">Demonstração com dados fictícios. No produto, fotos e PDFs são lidos por IA; aqui, por regras, no seu navegador. A busca no catálogo e a conferência técnica seguem as mesmas regras do produto.</p>
+
+    <dl class="ficha">
+      <div><dt>Recebe</dt><dd>WhatsApp, e-mail e upload</dd></div>
+      <div><dt>Lê</dt><dd>PDF, Excel, CSV, JPG e PNG</dd></div>
+      <div><dt>Decide</dt><dd>Sempre alguém do seu time</dd></div>
+      <div><dt>Entrega</dt><dd>Cotação em PDF, Excel ou CSV</dd></div>
+    </dl>
+  </div>
+</section>
+
+<!-- ═════════ Leitura ═════════ -->
+<section class="sec sec-sheet" id="leitura">
+  <div class="wrap two">
+    <div class="sec-head sticky">
+      <p class="eyebrow">Leitura</p>
+      <h2 class="display">Escreva como o seu cliente escreve.</h2>
+      <p class="lede">Abreviação, bitola sem unidade, código do fabricante no meio da frase. Digite um item e veja o que o sistema entende — e o que ele encontra num catálogo de demonstração com <span id="n-products">185</span> produtos.</p>
+    </div>
+
+    <div class="bench">
+      <form class="bench-field" id="bench-form" autocomplete="off">
+        <label class="sr" for="bench-input">Um item, do jeito que o cliente escreve</label>
+        <input id="bench-input" type="text" inputmode="text" maxlength="160" spellcheck="false" placeholder="ex.: 12 disj tripolar 32a curva c" value="12 disj tripolar 32a curva c">
+        <button class="send" type="submit" aria-label="Ler este item">
+          <svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 13V3M4 7l4-4 4 4"/></svg>
+        </button>
+      </form>
+      <div class="tries" id="tries">
+        <span class="label">Tente</span>
+        <button class="try" type="button">12 disj tripolar 32a curva c</button>
+        <button class="try" type="button">500m cabo flex 2,5 azul</button>
+        <button class="try" type="button">6 idr 2p 40a 30ma</button>
+        <button class="try" type="button">10 un ref ZTK-M3C32</button>
+        <button class="try" type="button">30 lamp led 9w</button>
+        <button class="try" type="button">disj 3p 80a curva c</button>
+        <button class="try" type="button">8 sensor indutivo m18 pnp</button>
+      </div>
+      <div class="result" id="result" aria-live="polite"></div>
+      <p class="bench-foot">Roda no seu navegador, sem enviar nada a servidor. Fabricantes, códigos e preços do catálogo são inventados.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ═════════ Como funciona ═════════ -->
+<section class="sec" id="como-funciona">
+  <div class="wrap">
+    <div class="sec-head wide">
+      <p class="eyebrow">Como funciona</p>
+      <h2 class="display">Do pedido à cotação, em cinco passos.</h2>
+      <p class="lede">Acompanhe o mesmo item do começo ao fim.</p>
+    </div>
+    <ol class="flow">
+      <li>
+        <span class="flow-node"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11.5V15a1.5 1.5 0 0 0 1.5 1.5h11A1.5 1.5 0 0 0 17 15v-3.5"/><path d="M3 11.5l2-7h10l2 7h-4.2a2.8 2.8 0 0 1-5.6 0z"/></svg></span>
+        <h3>Recebe</h3>
+        <p>WhatsApp, e-mail ou upload. Tudo cai na mesma caixa de entrada, com o documento original guardado.</p>
+        <p class="trace"><b>Chega assim</b>“12 disj tripolar 32a curva c”</p>
+      </li>
+      <li>
+        <span class="flow-node"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6V4.5A1.5 1.5 0 0 1 4.5 3H6M14 3h1.5A1.5 1.5 0 0 1 17 4.5V6M17 14v1.5a1.5 1.5 0 0 1-1.5 1.5H14M6 17H4.5A1.5 1.5 0 0 1 3 15.5V14M2.5 10h15"/></svg></span>
+        <h3>Lê</h3>
+        <p>A IA transforma o documento em itens: descrição, quantidade, unidade e código. O que não está escrito fica em branco.</p>
+        <p class="trace"><b>Vira</b><span id="trace-read">12 un · disjuntor · 3 polos · 32 A · curva C</span></p>
+      </li>
+      <li>
+        <span class="flow-node"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="9" r="5.5"/><path d="M13.2 13.2L17 17M9 6.5v5M6.5 9h5"/></svg></span>
+        <h3>Encontra</h3>
+        <p>O motor de correspondência busca no seu catálogo por código, sinônimo e descrição, e confere os atributos técnicos.</p>
+        <p class="trace"><b>Sugere</b><span id="trace-match">DJ-3P-032-C · aderência 96%</span></p>
+      </li>
+      <li>
+        <span class="flow-node"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 10.5l3.5 3.5L16 5.5"/></svg></span>
+        <h3>Você confere</h3>
+        <p>Aceite a sugestão, escolha outro candidato ou marque como não encontrado. Pelo teclado, vai rápido.</p>
+        <p class="trace"><b>Decisão</b>aceito com a tecla A</p>
+      </li>
+      <li>
+        <span class="flow-node"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 2.5h7l3.5 3.5v11.5H5z"/><path d="M12 2.5V6h3.5M7.5 10h5M7.5 13h5"/></svg></span>
+        <h3>Cotação</h3>
+        <p>Preços do seu catálogo ou da lista do cliente. Ajuste, finalize e exporte em PDF, Excel ou CSV.</p>
+        <p class="trace"><b>Na cotação</b><span id="trace-total">12 × R$ 57,84 = R$ 694,08</span></p>
+      </li>
+    </ol>
+  </div>
+</section>
+
+<!-- ═════════ Compatibilidade ═════════ -->
+<section class="sec sec-night" id="compatibilidade">
+  <div class="wrap two">
+    <div class="sec-head">
+      <p class="eyebrow">Correspondência técnica</p>
+      <h2 class="display">32 A <em>não é</em> 40 A.</h2>
+      <p class="lede">Descrição parecida não faz produto equivalente. Antes de sugerir, o sistema compara corrente, polos, curva, bitola, tensão e outros atributos. Se um atributo crítico diverge, o produto sai da lista, e o revisor vê o motivo.</p>
+      <ul class="rules">
+        <li><b><span id="n-attrs">25</span> atributos técnicos, <span id="n-critical">20</span> deles críticos</b><span>Corrente, polos, curva, bitola, tensão, rosca, tipo de saída, faixa de ajuste e mais.</span></li>
+        <li><b>Código idêntico pesa mais, mas não esconde contradição</b><span>Se o código é de um produto e a descrição pede outro, o item vai para análise.</span></li>
+        <li><b>Sem informação, sem palpite</b><span>O que o catálogo não informa aparece como "não informado". Nada é completado por dedução.</span></li>
+      </ul>
+    </div>
+
+    <div class="bancada" id="bancada">
+      <div class="pedido">
+        <div class="dial" id="dial" role="radiogroup" aria-label="Corrente pedida pelo cliente">
+          <span class="dial-face" aria-hidden="true"></span>
+        </div>
+        <div class="pedido-side">
+          <p class="label">Pedido do cliente · gire o seletor</p>
+          <div class="segs">
+            <div class="seg-wrap"><span class="label">Polos</span>
+              <div class="seg" role="radiogroup" aria-label="Polos">
+                <input type="radio" name="polos" id="polos-1" value="1"><label for="polos-1">1P</label>
+                <input type="radio" name="polos" id="polos-2" value="2"><label for="polos-2">2P</label>
+                <input type="radio" name="polos" id="polos-3" value="3" checked><label for="polos-3">3P</label>
+              </div>
+            </div>
+            <div class="seg-wrap"><span class="label">Curva</span>
+              <div class="seg" role="radiogroup" aria-label="Curva">
+                <input type="radio" name="curva" id="curva-b" value="B"><label for="curva-b">B</label>
+                <input type="radio" name="curva" id="curva-c" value="C" checked><label for="curva-c">C</label>
+              </div>
+            </div>
+          </div>
+          <p class="pedido-text" id="pedido-text"></p>
+        </div>
+      </div>
+      <div class="trilho-wrap" role="group" aria-label="Sete disjuntores do catálogo de demonstração no trilho"><div class="trilho" id="trilho"></div></div>
+      <p class="trilho-key"><svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M3.5 6h9M3.5 10h9M10.6 3.2L5.4 12.8"/></svg> o que diverge do pedido · % de semelhança do texto com o pedido</p>
+      <p class="veredito" id="veredito" aria-live="polite"></p>
+    </div>
+  </div>
+</section>
+
+<!-- ═════════ Revisão ═════════ -->
+<section class="sec sec-sheet" id="revisao">
+  <div class="wrap two">
+    <div class="sec-head sticky">
+      <p class="eyebrow">Revisão</p>
+      <h2 class="display">A IA sugere. Quem decide é você.</h2>
+      <p class="lede">Cada item mostra o que o cliente escreveu, o produto sugerido e o motivo. Um toque aceita, outro marca como não encontrado. Nenhuma cotação sai sem passar por alguém do seu time.</p>
+      <p class="keys"><span><kbd>J</kbd><kbd>K</kbd>navegar</span><span><kbd>A</kbd>aceitar</span><span><kbd>N</kbd>não encontrado</span></p>
+    </div>
+    <div class="rev" id="rev" tabindex="0" role="group" aria-label="Demonstração de revisão. Com o foco aqui, J e K navegam, A aceita e N marca como não encontrado."></div>
+  </div>
+</section>
+
+<!-- ═════════ Rotina ═════════ -->
+<section class="sec" id="rotina">
+  <div class="wrap">
+    <div class="sec-head wide">
+      <p class="eyebrow">No dia a dia</p>
+      <h2 class="display">Encaixa na rotina do balcão.</h2>
+    </div>
+    <div class="bento">
+      <article class="cell c3 ink">
+        <p class="label">Canal</p>
+        <h3>WhatsApp Business</h3>
+        <p>Integração pela Cloud API oficial da Meta, com assinatura conferida em cada notificação. Nada de automação de WhatsApp Web.</p>
+        <div class="cell-art mini-chat" aria-hidden="true">
+          <div>Boa tarde, segue a lista da obra. Consegue cotar hoje?</div>
+          <small><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 8.5l3 3 6-7"/></svg>assinatura conferida · solicitação criada</small>
+        </div>
+      </article>
+      <article class="cell c3 tint">
+        <p class="label">Canal</p>
+        <h3>E-mail</h3>
+        <p>Sua empresa ganha um endereço de recebimento só dela. Encaminhe os pedidos para lá e eles entram na fila, com os anexos.</p>
+        <div class="cell-art"><span class="addr">eletricacentral-ab12cd@entrada.cotacao.example</span></div>
+      </article>
+      <article class="cell c2">
+        <p class="label">Canal</p>
+        <h3>Upload</h3>
+        <p>Arraste o arquivo que o cliente mandou. O tipo é conferido pelo conteúdo, não pela extensão.</p>
+        <ul class="cell-art exts" aria-label="Formatos aceitos"><li class="ext">PDF</li><li class="ext">XLSX</li><li class="ext">XLS</li><li class="ext">CSV</li><li class="ext">JPG</li><li class="ext">PNG</li></ul>
+      </article>
+      <article class="cell c4">
+        <p class="label">Catálogo</p>
+        <h3>Ele aprende a língua do seu cliente</h3>
+        <p>Importe a planilha que você já tem. Sinônimos e códigos de fabricante ligam o jeito de pedir ao seu produto.</p>
+        <div class="cell-art">
+          <table class="syn">
+            <thead><tr><th scope="col">Seu produto</th><th scope="col">Como o cliente pede</th></tr></thead>
+            <tbody>
+              <tr><td>DJ-3P-032-C</td><td><span class="chip">minidisjuntor 3P 32A curva C</span><span class="chip code">ZTK-M3C32</span><span class="chip code">AMP-D3C32</span></td></tr>
+              <tr><td>CB-25-AZ</td><td><span class="chip">cabinho 2,5 azul</span><span class="chip">fio flexível 2,5mm azul</span></td></tr>
+              <tr><td>RF-050</td><td><span class="chip">holofote LED 50W</span><span class="chip">projetor LED 50W</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </article>
+      <article class="cell c3">
+        <p class="label">Preços</p>
+        <h3>Preço é do seu cadastro</h3>
+        <p>Vale a lista do cliente, depois a lista padrão, depois o preço de catálogo. A IA não escreve preço: produto sem preço cadastrado fica em branco até alguém informar.</p>
+        <div class="cell-art plist" aria-hidden="true">
+          <div><span>Catálogo</span><b>R$ 57,84</b></div>
+          <div><span>Lista Construtoras</span><b>R$ 52,06</b></div>
+          <div class="blank"><span>Sem preço cadastrado</span><b>em branco</b></div>
+        </div>
+      </article>
+      <article class="cell c3">
+        <p class="label">Equipe</p>
+        <h3>Cada um vê o que precisa</h3>
+        <p>Quatro papéis, com permissões conferidas no servidor. O vendedor revisa e cota, sem acesso a integrações.</p>
+        <div class="cell-art roles">
+          <span class="role">Proprietário<small>tudo</small></span>
+          <span class="role">Administrador<small>catálogo e integrações</small></span>
+          <span class="role">Vendedor<small>revisão e cotações</small></span>
+          <span class="role">Leitura<small>consulta</small></span>
+        </div>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ═════════ Segurança ═════════ -->
+<section class="sec sec-sheet" id="seguranca">
+  <div class="wrap two">
+    <div class="sec-head sticky">
+      <p class="eyebrow">Segurança e LGPD</p>
+      <h2 class="display">O pedido do seu cliente fica com você.</h2>
+      <p class="lede">Lista de material diz muito sobre uma obra e sobre quem compra. O sistema trata esses dados como seus.</p>
+    </div>
+    <dl class="specs">
+      <div><dt>Isolamento</dt><dd><b>Cada empresa só enxerga os próprios dados.</b> A regra vale no servidor e no banco de dados, não só na tela.</dd></div>
+      <div><dt>Credenciais</dt><dd><b>Tokens de integração cifrados</b> com AES-256-GCM. Nunca ficam em texto puro.</dd></div>
+      <div><dt>Arquivos</dt><dd><b>Documentos em armazenamento privado.</b> Cada acesso usa um link temporário, emitido depois de conferir a permissão.</dd></div>
+      <div><dt>Auditoria</dt><dd><b>Quem fez o quê, e quando.</b> Revisões, cotações, downloads e mudanças de configuração ficam registrados.</dd></div>
+      <div><dt>Retenção</dt><dd><b>Você define o prazo.</b> Documentos originais podem ser excluídos por política ou a pedido.</dd></div>
+      <div><dt>Entrada</dt><dd><b>Notificações com assinatura conferida.</b> Mensagem repetida não vira solicitação duplicada.</dd></div>
+    </dl>
+  </div>
+</section>
+
+<!-- ═════════ Tempo ═════════ -->
+<section class="sec" id="tempo">
+  <div class="wrap">
+    <div class="sec-head wide">
+      <p class="eyebrow">Faça a conta</p>
+      <h2 class="display">Quantas horas o seu time passa digitando cotação?</h2>
+    </div>
+    <div class="calc">
+      <div class="knobs">
+        <div class="knob"><label for="k-cot">Cotações por dia</label><output id="o-cot" for="k-cot">15</output><input id="k-cot" type="range" min="1" max="80" step="1" value="15"></div>
+        <div class="knob"><label for="k-itens">Itens por cotação</label><output id="o-itens" for="k-itens">12</output><input id="k-itens" type="range" min="1" max="60" step="1" value="12"></div>
+        <div class="knob"><label for="k-hoje">Hoje: tempo para achar e digitar cada item</label><output id="o-hoje" for="k-hoje">40 s</output><input id="k-hoje" type="range" min="10" max="180" step="5" value="40"></div>
+        <div class="knob"><label for="k-rev">Com revisão: tempo para conferir cada item</label><output id="o-rev" for="k-rev">8 s</output><input id="k-rev" type="range" min="2" max="60" step="1" value="8"><small>É a sua premissa. Ajuste para o que fizer sentido na sua operação.</small></div>
+      </div>
+      <div class="tally" aria-live="polite">
+        <div class="tally-row"><p class="label"><span>Hoje, digitando</span><span>horas por mês</span></p><div class="tally-bar"><i id="t-hoje"></i></div></div>
+        <div class="tally-row after"><p class="label"><span>Conferindo sugestões</span><span>horas por mês</span></p><div class="tally-bar"><i id="t-rev"></i></div></div>
+        <div class="tally-back"><b id="t-dif"></b><span>horas por mês de volta para atender e vender</span></div>
+      </div>
+    </div>
+    <p class="fine">Conta feita com os seus números, em 22 dias úteis por mês. É uma estimativa para você comparar cenários, não uma promessa de resultado.</p>
+  </div>
+</section>
+
+<!-- ═════════ Perguntas ═════════ -->
+<section class="sec sec-sheet" id="perguntas">
+  <div class="wrap two">
+    <div class="sec-head sticky">
+      <p class="eyebrow">Perguntas</p>
+      <h2 class="display">O que todo gerente de vendas pergunta.</h2>
+    </div>
+    <div class="faq">
+      <details open>
+        <summary>A IA aprova cotação sozinha?<i aria-hidden="true"></i></summary>
+        <p>Não. Toda sugestão, até a mais forte, depende de alguém do seu time aceitar. O sistema organiza o trabalho e explica cada sugestão; a decisão é sempre de uma pessoa.</p>
+      </details>
+      <details>
+        <summary>De onde vêm os preços?<i aria-hidden="true"></i></summary>
+        <p>Só do seu catálogo e das listas de preço que você importar. Se um produto não tem preço cadastrado, o campo fica em branco para o vendedor preencher. A IA nunca escreve preço.</p>
+      </details>
+      <details>
+        <summary>E se o cliente pedir algo que eu não tenho?<i aria-hidden="true"></i></summary>
+        <p>O item aparece como não encontrado. O sistema não troca por um parecido nem inventa código. Quando existe algo próximo, ele mostra o produto e o motivo de ter sido descartado.</p>
+      </details>
+      <details>
+        <summary>Funciona com o WhatsApp que eu já uso?<i aria-hidden="true"></i></summary>
+        <p>A integração usa a API oficial do WhatsApp Business (Cloud API), com um número cadastrado na plataforma da Meta. Não usamos bibliotecas que automatizam o WhatsApp Web.</p>
+      </details>
+      <details>
+        <summary>Preciso trocar o meu ERP?<i aria-hidden="true"></i></summary>
+        <p>Não. A cotação sai em PDF, Excel ou CSV, para enviar ao cliente ou lançar no sistema que você já usa. Nesta versão não há integração direta com ERPs.</p>
+      </details>
+      <details>
+        <summary>Que tipo de arquivo o sistema lê?<i aria-hidden="true"></i></summary>
+        <p>PDF, Excel (XLSX e XLS), CSV, JPG e PNG, além do texto de mensagens e e-mails. Planilha com colunas claras é lida direto, sem IA. Documento pouco legível é sinalizado para o revisor.</p>
+      </details>
+      <details>
+        <summary>Qual IA é usada, e para quê?<i aria-hidden="true"></i></summary>
+        <p>Um modelo de linguagem da Anthropic ou da OpenAI, à sua escolha, só para ler o documento e listar os itens. Encontrar o produto, conferir a compatibilidade e montar a cotação é trabalho de regras fixas, que podem ser testadas.</p>
+      </details>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<!-- ═════════ Chamada final ═════════ -->
+<footer class="final">
+  <div class="wrap">
+    <h2 class="display">Traga uma <span class="hand">lista<svg viewBox="0 0 100 8" preserveAspectRatio="none" aria-hidden="true"><path pathLength="1" d="M2 5 C 18 1.5, 30 7.5, 48 4 S 80 1.5, 98 5"/></svg></span> de hoje.</h2>
+    <div class="final-row">
+<!--@wa-->
+      <p class="lede">Chame no WhatsApp e conte como os pedidos chegam no seu balcão. Se preferir, comece pela demonstração desta página.</p>
+      <div class="final-cta">
+        <a class="btn btn-primary" href="{{WHATSAPP_URL}}" target="_blank" rel="noopener noreferrer">Falar no WhatsApp
+          <svg class="go" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4"/></svg>
+        </a>
+        <a class="btn btn-ghost" href="#leitura">Testar nesta página</a>
+      </div>
+<!--@/wa-->
+<!--@demo-->
+      <p class="lede">Comece pela demonstração desta página: escreva um item do jeito que chega no seu balcão e revise uma solicitação inteira.</p>
+      <div class="final-cta">
+        <a class="btn btn-primary" href="#leitura">Testar com um item seu
+          <svg class="go" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4"/></svg>
+        </a>
+        <a class="btn btn-ghost" href="#revisao">Revisar uma solicitação</a>
+      </div>
+<!--@/demo-->
+    </div>
+    <div class="foot">
+      <a class="brand" href="#topo">
+        <svg viewBox="0 0 32 32" width="24" height="24" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#1f5fd0"/><path d="M9 10.5h10M9 16h14M9 21.5h7" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/><circle cx="23" cy="21.5" r="2.2" fill="#9cc2ff"/></svg>
+        Cotação IA
+      </a>
+      <nav aria-label="Rodapé">
+        <a href="#leitura">Leitura</a>
+        <a href="#como-funciona">Como funciona</a>
+        <a href="#compatibilidade">Compatibilidade</a>
+        <a href="#revisao">Revisão</a>
+        <a href="#seguranca">Segurança</a>
+        <a href="#perguntas">Perguntas</a>
+      </nav>
+      <p class="foot-note">Empresas, pessoas, fabricantes, códigos e preços mostrados nesta página são fictícios e servem apenas à demonstração.</p>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

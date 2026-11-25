@@ -1,0 +1,144 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+/*
+ * Tokens de design (tema claro).
+ * Neutros levemente frios, um único acento azul e cores de status reservadas.
+ * As cores de série dos gráficos (--series-*) seguem uma paleta validada para
+ * daltonismo; não as reutilize para status.
+ */
+:root {
+  --radius: 0.5rem;
+
+  --background: oklch(0.985 0.002 250);
+  --foreground: oklch(0.21 0.012 260);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.21 0.012 260);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.21 0.012 260);
+  --primary: oklch(0.52 0.19 258);
+  --primary-foreground: oklch(0.99 0 0);
+  --secondary: oklch(0.965 0.004 250);
+  --secondary-foreground: oklch(0.27 0.012 260);
+  --muted: oklch(0.965 0.004 250);
+  --muted-foreground: oklch(0.5 0.014 260);
+  --accent: oklch(0.955 0.012 255);
+  --accent-foreground: oklch(0.27 0.012 260);
+  --destructive: oklch(0.56 0.21 27);
+  --border: oklch(0.915 0.006 255);
+  --input: oklch(0.89 0.008 255);
+  --ring: oklch(0.62 0.17 258);
+
+  --sidebar: oklch(0.975 0.003 250);
+  --sidebar-foreground: oklch(0.3 0.012 260);
+  --sidebar-accent: oklch(0.94 0.008 255);
+  --sidebar-border: oklch(0.915 0.006 255);
+
+  /* Status (sempre com ícone + rótulo, nunca só cor) */
+  --success: oklch(0.52 0.14 150);
+  --success-soft: oklch(0.96 0.04 150);
+  --warning: oklch(0.55 0.13 70);
+  --warning-soft: oklch(0.965 0.05 85);
+  --danger: oklch(0.54 0.2 27);
+  --danger-soft: oklch(0.965 0.025 25);
+  --info: oklch(0.5 0.17 258);
+  --info-soft: oklch(0.96 0.025 255);
+
+  /* Gráficos: paleta categórica (ordem fixa) e rampa ordinal de um único matiz */
+  --series-1: #2a78d6;
+  --series-2: #eb6834;
+  --series-3: #1baf7a;
+  --ordinal-1: #86b6ef;
+  --ordinal-2: #2a78d6;
+  --ordinal-3: #104281;
+  --chart-grid: oklch(0.925 0.004 255);
+  --chart-axis: oklch(0.82 0.008 255);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-info: var(--info);
+  --color-info-soft: var(--info-soft);
+  --color-series-1: var(--series-1);
+  --color-series-2: var(--series-2);
+  --color-series-3: var(--series-3);
+  --color-ordinal-1: var(--ordinal-1);
+  --color-ordinal-2: var(--ordinal-2);
+  --color-ordinal-3: var(--ordinal-3);
+  --color-chart-grid: var(--chart-grid);
+  --color-chart-axis: var(--chart-axis);
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+@utility select-chevron {
+  background-image: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.6rem center;
+  background-size: 16px;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    @apply h-full;
+  }
+  body {
+    @apply bg-background text-foreground h-full antialiased;
+    font-feature-settings: "cv11", "ss01";
+    text-rendering: optimizeLegibility;
+  }
+  /* Foco visível e consistente para navegação por teclado */
+  :focus-visible {
+    @apply outline-ring outline-2 outline-offset-2;
+  }
+  ::selection {
+    background: color-mix(in oklch, var(--primary) 22%, transparent);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
